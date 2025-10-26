@@ -1,41 +1,65 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# -----------------------------
+# 🌐 Node.js & Express Backend
+# -----------------------------
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
+# Dependency directories
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# Env files (sensitive info)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# vercel
-.vercel
+# Logs
+logs
+*.log
+logs/*.log
+pids
+*.pid
+*.seed
+*.pid.lock
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Coverage & build files
+coverage/
+build/
+dist/
+tmp/
+temp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor folders/files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# -----------------------------
+# ⚛️ React Frontend
+# -----------------------------
+# If frontend is inside /client or /frontend folder
+
+client/node_modules/
+client/build/
+client/.env
+client/.DS_Store
+client/npm-debug.log*
+client/yarn-debug.log*
+client/yarn-error.log*
+
+# -----------------------------
+# 🔧 Miscellaneous
+# -----------------------------
+# Optional: ignore backup or generated files
+*.bak
+*.swp
+*.log
+*.orig

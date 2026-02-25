@@ -63,3 +63,7 @@ client/yarn-error.log*
 *.swp
 *.log
 *.orig
+
+
+evol-5d25f-firebase-adminsdk-fbsvc-65ba7cc7a0.json
+package-lock.json

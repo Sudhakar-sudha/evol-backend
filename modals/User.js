@@ -53,7 +53,19 @@ const userSchema = new mongoose.Schema(
         gender: {
             type: String,
             enum: ["male", "female"],
-            required: false,
+        },
+
+        dateOfBirth: {
+            type: Date,
+        },
+
+        age: {
+            type: Number,
+            min: 0,
+        },
+
+        loveStartDate: {
+            type: Date,
         },
 
         partnerId: {
@@ -62,6 +74,25 @@ const userSchema = new mongoose.Schema(
             default: null,
         },
 
+        partnerInviteToken: {
+            type: String,
+            default: null,
+            index: true,
+        },
+        partnerInviteExpires: {
+            type: Date,
+            default: null,
+        },
+        invitedPartnerEmail: {
+            type: String,
+            unique: true,
+            lowercase: true,
+            index: true,
+        },
+        onboardingSeen: {
+            type: Boolean,
+            default: false,
+        },
         device: {
             deviceId: String,
             platform: {
@@ -108,6 +139,28 @@ const userSchema = new mongoose.Schema(
 userSchema.pre("save", async function () {
     if (!this.password || !this.isModified("password")) return;
     this.password = await bcrypt.hash(this.password, 10);
+});
+
+// 🔢 Calculate Age Automatically
+userSchema.pre("save", function (next) {
+    if (!this.dateOfBirth) return;
+
+    if (this.isModified("dateOfBirth")) {
+        const today = new Date();
+        const dob = new Date(this.dateOfBirth);
+
+        let age = today.getFullYear() - dob.getFullYear();
+        const monthDiff = today.getMonth() - dob.getMonth();
+
+        if (
+            monthDiff < 0 ||
+            (monthDiff === 0 && today.getDate() < dob.getDate())
+        ) {
+            age--;
+        }
+
+        this.age = age;
+    }
 });
 
 

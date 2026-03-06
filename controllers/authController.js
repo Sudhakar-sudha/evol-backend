@@ -196,34 +196,32 @@ export const login = async (req, res) => {
     const normalizedEmail = email.toLowerCase();
 
     const user = await User.findOne({ email: normalizedEmail }).select(
-      "+password +refreshToken"
+      "+password"
     );
 
     if (!user) {
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
-    if (user.provider === "google") {
-      return res.status(400).json({
+    if (user.provider === "google" && !user.password) {
+      return res.status(409).json({
         success: false,
         message: "Use Google login for this account",
       });
     }
 
-
-    if (!user || !user.password) {
+    if (!user.password) {
       return res.status(401).json({
         success: false,
-        message: "Invalid credentials",
+        message: "Invalid email or password",
       });
     }
-
 
     const match = await user.comparePassword(password);
     if (!match) {
       return res.status(401).json({
         success: false,
-        message: "Invalid credentials",
+        message: "Invalid email or password",
       });
     }
 
@@ -255,7 +253,7 @@ export const login = async (req, res) => {
     const userData = user.toObject();
     delete userData.password;
 
-    res.json({
+    return res.status(200).json({
       success: true,
       message: "Login successful",
       data: {
@@ -265,9 +263,10 @@ export const login = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({
+    console.error(error);
+    return res.status(500).json({
       success: false,
-      message: "Server error",
+      message: "Internal server error",
     });
   }
 };
@@ -437,6 +436,8 @@ export const changePasswordAfterOTP = async (req, res) => {
       });
     }
 
+    // check if password already exists
+    const isFirstTimePasswordSet = !user.password;
     // Set new password (pre-save hook will hash)
     user.password = newPassword;
 
@@ -452,23 +453,36 @@ export const changePasswordAfterOTP = async (req, res) => {
     user.device = undefined;
 
     await user.save();
+    // message based on condition
+    const subject = isFirstTimePasswordSet
+      ? "Password Set Successfully"
+      : "Password Changed Successfully";
+
+    const message = isFirstTimePasswordSet
+      ? `
+        <p>Your password has been set successfully.</p>
+        <p>You can now login using your password.</p>
+      `
+      : `
+        <p>Your password has been changed successfully.</p>
+        <p>If this wasn’t you, please contact support immediately.</p>
+      `;
 
     await fetch("https://email-service-chi-lemon.vercel.app/send-mail", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         to: email,
-        subject: "Password Changed Successfully",
-        message: `
-          <p>Your password has been changed successfully.</p>
-          <p>If this wasn’t you, please contact support immediately.</p>
-        `,
+        subject,
+        message,
       }),
     });
 
     res.json({
       success: true,
-      message: "Password changed successfully",
+      message: isFirstTimePasswordSet
+        ? "Password set successfully"
+        : "Password changed successfully",
     });
   } catch (err) {
     console.error("Error changing password:", err);

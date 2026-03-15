@@ -100,7 +100,7 @@ export const googleLogin = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Google login error");
+    console.error("Google login error", error);
     res.status(401).json({
       success: false,
       message: "Google authentication failed",
@@ -171,6 +171,7 @@ export const register = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("Registration error", error);
     res.status(500).json({
       success: false,
       message: "Server error",
@@ -263,7 +264,7 @@ export const login = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("Login error", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -299,6 +300,7 @@ export const logout = async (req, res) => {
       message: "Logout successful",
     });
   } catch (error) {
+    console.error("Logout error", error);
     res.status(500).json({
       success: false,
       message: "Server error",
@@ -356,7 +358,7 @@ export const forgotPassword = async (req, res) => {
       message: "OTP sent to email",
     });
   } catch (err) {
-    console.error(err);
+    console.error("Forgot password error", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -413,7 +415,7 @@ export const verifyResetOTP = async (req, res) => {
       resetSessionToken: user.resetSessionToken,
     });
   } catch (err) {
-    console.error(err);
+    console.error("Verify OTP error", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -523,7 +525,7 @@ export const resendResetOTP = async (req, res) => {
       message: "OTP resent successfully",
     });
   } catch (err) {
-    console.error(err);
+    console.error("Resend OTP error", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };

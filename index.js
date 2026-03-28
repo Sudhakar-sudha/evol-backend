@@ -4,8 +4,12 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
+import http from "http";
+import { Server } from "socket.io";
+
 import connectDB from "./config/db.js";
 import routes from "./routes/IndexRoutes.js";
+import chatSocket from "./sockets/chatSocket.js";
 
 dotenv.config();
 
@@ -14,9 +18,18 @@ const app = express();
 // body parser
 app.use(express.json());
 
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
+
 // cors (IMPORTANT for refresh token cookies)
 app.use(cors({
-  origin: "http://localhost:8081",
+  origin: "*",
   credentials: true,
 }));
 
@@ -37,11 +50,15 @@ app.get("/", (req, res) => {
   res.send("API running 🚀");
 });
 
+
+// Socket setup
+chatSocket(io);
+
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
   await connectDB();
-  app.listen(PORT, () =>
+  server.listen(PORT, () =>
     console.log(`Server running at http://0.0.0.0:${PORT}`)
   );
 };

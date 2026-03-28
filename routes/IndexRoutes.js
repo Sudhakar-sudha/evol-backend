@@ -2,12 +2,14 @@ import express from "express";
 import authRoutes from "./authRoutes.js";
 import inviteRoutes from "./InviteRouts.js";
 import profileRoutes from "./profileRoutes.js";
+import chatRoutes from "./chatRoutes.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
 router.use("/auth", authRoutes);
 router.use("/profile", protect, profileRoutes);
-router.use("/partner", inviteRoutes);
+router.use("/partner", protect, inviteRoutes);
+router.use("/chat", protect, chatRoutes);
 
 export default router;

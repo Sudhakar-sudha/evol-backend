@@ -6,14 +6,13 @@ import {
     rejectPartnerInvite,
     disconnectPartner
 } from "../controllers/InviteController.js";
-import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.post("/invite", protect, invitePartner);
-router.get("/pending-invite", protect, getPendingInvite);
-router.post("/accept-invite", protect, acceptPartnerInvite);
-router.post("/reject-invite", protect, rejectPartnerInvite);
-router.post("/disconnect", protect, disconnectPartner);
+router.post("/invite", invitePartner);
+router.get("/pending-invite", getPendingInvite);
+router.post("/accept-invite", acceptPartnerInvite);
+router.post("/reject-invite", rejectPartnerInvite);
+router.post("/disconnect", disconnectPartner);
 
 export default router;

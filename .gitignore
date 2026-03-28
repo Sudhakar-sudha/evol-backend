@@ -65,5 +65,5 @@ client/yarn-error.log*
 *.orig
 
 
-evol-5d25f-firebase-adminsdk-fbsvc-65ba7cc7a0.json
+serviceAccountKey.json
 package-lock.json

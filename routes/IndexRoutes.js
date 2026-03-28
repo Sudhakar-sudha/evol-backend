@@ -8,6 +8,6 @@ const router = express.Router();
 
 router.use("/auth", authRoutes);
 router.use("/profile", protect, profileRoutes);
-router.use("/invitepartner", inviteRoutes);
+router.use("/partner", inviteRoutes);
 
 export default router;

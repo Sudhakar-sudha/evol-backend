@@ -111,6 +111,30 @@ const chatSocket = (io) => {
       }
     });
 
+    socket.on("deleteMessage", async ({ messageId, senderId, receiverId }) => {
+      try {
+        const message = await Message.findById(messageId);
+
+        if (!message) return;
+
+        // Only sender can delete
+        if (message.senderId.toString() !== senderId) return;
+
+        await Message.findByIdAndDelete(messageId);
+
+        const receiverSocketId = onlineUsers.get(receiverId);
+
+        // Send delete event to both users
+        socket.emit("messageDeleted", { messageId });
+
+        if (receiverSocketId) {
+          io.to(receiverSocketId).emit("messageDeleted", { messageId });
+        }
+      } catch (err) {
+        console.error("deleteMessage error:", err);
+      }
+    });
+
     // ─── Disconnect ──────────────────────────────────────────────
     socket.on("disconnect", () => {
       const userId = socketToUser.get(socket.id);

@@ -2,7 +2,7 @@
 import admin from "../config/firebase.js"; // Firebase Admin SDK instance
 import User from "../modals/User.js";
 import PartnerInvite from "../modals/PartnerInvite.js";
-
+import mongoose from "mongoose";
 // ─────────────────────────────────────────────
 // Helper: send a push notification via FCM
 // ─────────────────────────────────────────────
@@ -207,6 +207,7 @@ export const acceptPartnerInvite = async (req, res) => {
     const receiverId = req.user.id;
     const { inviteId, loverBirthDate } = req.body;
 
+    // ── Validate input ───────────────────────────
     if (!inviteId || !loverBirthDate) {
       return res.status(400).json({
         success: false,
@@ -229,6 +230,14 @@ export const acceptPartnerInvite = async (req, res) => {
       });
     }
 
+    // ── Prevent self invite acceptance ───────────
+    if (invite.senderId.toString() === receiverId.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot accept your own invite.",
+      });
+    }
+
     // ── Fetch both users ─────────────────────────
     const [sender, receiver] = await Promise.all([
       User.findById(invite.senderId),
@@ -236,12 +245,17 @@ export const acceptPartnerInvite = async (req, res) => {
     ]);
 
     if (!sender || !receiver) {
-      return res.status(404).json({ success: false, message: "User not found." });
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
     }
 
-    // ── Re-validate connection status ────────────
+    // ── Re-check partner connection status ───────
     if (sender.partnerId) {
-      await invite.updateOne({ status: "expired" });
+      invite.status = "expired";
+      await invite.save();
+
       return res.status(400).json({
         success: false,
         message: "This user is already connected with someone.",
@@ -255,7 +269,7 @@ export const acceptPartnerInvite = async (req, res) => {
       });
     }
 
-    // ── Onboarding check ─────────────────────────
+    // ── Onboarding validation ────────────────────
     if (!sender.onboardingSeen || !receiver.onboardingSeen) {
       return res.status(400).json({
         success: false,
@@ -263,12 +277,37 @@ export const acceptPartnerInvite = async (req, res) => {
       });
     }
 
-    // ── DOB verification ─────────────────────────
-    const senderDOB = sender.dateOfBirth.toISOString().split("T")[0];
-    if (senderDOB !== loverBirthDate) {
+    // ── DOB validation ───────────────────────────
+    if (!sender.dateOfBirth) {
+      return res.status(400).json({
+        success: false,
+        message: "Sender birth date is missing.",
+      });
+    }
+
+    const senderDOB = new Date(sender.dateOfBirth)
+      .toISOString()
+      .split("T")[0];
+
+    const enteredDOB = new Date(loverBirthDate)
+      .toISOString()
+      .split("T")[0];
+
+    if (senderDOB !== enteredDOB) {
       return res.status(403).json({
         success: false,
         message: "The birth date you entered does not match your partner's.",
+      });
+    }
+
+    // ── Final safety check before connecting ─────
+    const latestSender = await User.findById(sender._id).select("partnerId");
+    const latestReceiver = await User.findById(receiver._id).select("partnerId");
+
+    if (latestSender.partnerId || latestReceiver.partnerId) {
+      return res.status(409).json({
+        success: false,
+        message: "One of the users is already connected.",
       });
     }
 
@@ -278,30 +317,77 @@ export const acceptPartnerInvite = async (req, res) => {
 
     invite.status = "accepted";
 
-    await Promise.all([sender.save(), receiver.save(), invite.save()]);
+    // ── Save all changes ─────────────────────────
+    await Promise.all([
+      sender.save(),
+      receiver.save(),
+      invite.save(),
+    ]);
 
-    // ── Notify sender that invite was accepted ───
+    // ── Expire other pending invites ─────────────
+    await PartnerInvite.updateMany(
+      {
+        _id: { $ne: invite._id },
+        status: "pending",
+        $or: [
+          { senderId: sender._id },
+          { receiverId: sender._id },
+          { senderId: receiver._id },
+          { receiverId: receiver._id },
+        ],
+      },
+      {
+        $set: { status: "expired" },
+      }
+    );
+
+    // ── Push notification ────────────────────────
     try {
-      await sendPushNotification({
-        fcmToken: sender.fcmToken,
-        title: "💖 Connected!",
-        body: `${receiver.name || "Your partner"} accepted your invite on Evol!`,
-        data: {
-          type: "INVITE_ACCEPTED",
-          inviteId: invite._id.toString(),
-        },
-      });
+      if (sender.fcmToken) {
+        await sendPushNotification({
+          fcmToken: sender.fcmToken,
+          title: "💖 Connected!",
+          body: `${receiver.name || "Your partner"
+            } accepted your invite on Evol!`,
+          data: {
+            type: "INVITE_ACCEPTED",
+            inviteId: invite._id.toString(),
+          },
+        });
+      }
     } catch (pushError) {
       console.error("Acceptance push failed:", pushError.message);
     }
 
+    // ── Response ─────────────────────────────────
     return res.status(200).json({
       success: true,
       message: "You are now connected ❤️",
+      data: {
+        id: receiver._id,
+        name: receiver.name,
+        email: receiver.email,
+        avatar: receiver.avatar,
+        provider: receiver.provider,
+        gender: receiver.gender,
+        loveStartDate: receiver.loveStartDate,
+        dateOfBirth: receiver.dateOfBirth,
+
+        partner: {
+          id: sender._id,
+          name: sender.name,
+          gender: sender.gender,
+          avatar: sender.avatar,
+        },
+      },
     });
   } catch (error) {
     console.error("acceptPartnerInvite error:", error);
-    return res.status(500).json({ success: false, message: "Server error." });
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error.",
+    });
   }
 };
 
@@ -373,7 +459,7 @@ export const disconnectPartner = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).populate("partnerId", "name gender avatar");
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found." });
     }
@@ -413,6 +499,24 @@ export const disconnectPartner = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Partner disconnected successfully.",
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        provider: user.provider,
+        gender: user.gender,
+        loveStartDate: user.loveStartDate,
+        dateOfBirth: user.dateOfBirth,
+        partner: user.partnerId
+          ? {
+            id: user.partnerId._id,
+            name: user.partnerId.name,
+            gender: user.partnerId.gender,
+            avatar: user.partnerId.avatar,
+          }
+          : null,
+      },
     });
   } catch (error) {
     console.error("disconnectPartner error:", error);

@@ -32,7 +32,8 @@ export const googleLogin = async (req, res) => {
     const { name, email, picture, sub } = ticket.getPayload();
     const normalizedEmail = email.toLowerCase();
 
-    let user = await User.findOne({ email: normalizedEmail });
+    let user = await User.findOne({ email: normalizedEmail })
+      .populate("partnerId", "name gender avatar");
 
     if (!user) {
       user = await User.create({
@@ -96,6 +97,17 @@ export const googleLogin = async (req, res) => {
           email: user.email,
           avatar: user.avatar,
           provider: user.provider,
+          gender: user.gender,
+          loveStartDate: user.loveStartDate,
+          dateOfBirth: user.dateOfBirth,
+          partner: user.partnerId
+            ? {
+              id: user.partnerId._id,
+              name: user.partnerId.name,
+              gender: user.partnerId.gender,
+              avatar: user.partnerId.avatar,
+            }
+            : null,
         },
       },
     });
@@ -133,7 +145,7 @@ export const register = async (req, res) => {
       });
     }
 
-    const user = await User.create({
+    const createdUser = await User.create({
       name,
       email: normalizedEmail,
       password,
@@ -148,6 +160,10 @@ export const register = async (req, res) => {
       },
     });
 
+    const user = await User.findById(createdUser._id)
+      .populate("partnerId", "name gender avatar");
+
+
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
 
@@ -158,16 +174,30 @@ export const register = async (req, res) => {
 
     await user.save();
 
-    const userData = user.toObject();
-    delete userData.password;
-
     res.status(201).json({
       success: true,
       message: "Registration successful",
       data: {
         accessToken,
         refreshToken,
-        user: userData,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          avatar: user.avatar,
+          provider: user.provider,
+          gender: user.gender,
+          loveStartDate: user.loveStartDate,
+          dateOfBirth: user.dateOfBirth,
+          partner: user.partnerId
+            ? {
+              id: user.partnerId._id,
+              name: user.partnerId.name,
+              gender: user.partnerId.gender,
+              avatar: user.partnerId.avatar,
+            }
+            : null,
+        },
       },
     });
   } catch (error) {
@@ -196,9 +226,9 @@ export const login = async (req, res) => {
 
     const normalizedEmail = email.toLowerCase();
 
-    const user = await User.findOne({ email: normalizedEmail }).select(
-      "+password"
-    );
+    const user = await User.findOne({ email: normalizedEmail })
+      .select("+password")
+      .populate("partnerId", "name gender avatar");
 
     if (!user) {
       return res.status(401).json({ success: false, message: "Invalid credentials" });
@@ -251,8 +281,6 @@ export const login = async (req, res) => {
 
     await user.save();
 
-    const userData = user.toObject();
-    delete userData.password;
 
     return res.status(200).json({
       success: true,
@@ -260,7 +288,24 @@ export const login = async (req, res) => {
       data: {
         accessToken,
         refreshToken,
-        user: userData,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          avatar: user.avatar,
+          provider: user.provider,
+          gender: user.gender,
+          loveStartDate: user.loveStartDate,
+          dateOfBirth: user.dateOfBirth,
+          partner: user.partnerId
+            ? {
+              id: user.partnerId._id,
+              name: user.partnerId.name,
+              gender: user.partnerId.gender,
+              avatar: user.partnerId.avatar,
+            }
+            : null,
+        },
       },
     });
   } catch (error) {

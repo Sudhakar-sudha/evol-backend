@@ -22,7 +22,7 @@ export const updatePersonalDetails = async (req, res) => {
             });
         }
 
-        const user = await User.findOne(userId)
+        const user = await User.findById(userId)
             .populate("partnerId", "name gender avatar");
 
         if (!user) {

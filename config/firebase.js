@@ -11,7 +11,6 @@ if (!admin.apps.length) {
     credential: admin.credential.cert(serviceAccount),
   });
 
-  console.log("✅ Firebase Admin initialised — project:", serviceAccount.project_id);
 }
 
 export default admin;
